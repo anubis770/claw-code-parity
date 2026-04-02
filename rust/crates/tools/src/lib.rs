@@ -1902,19 +1902,11 @@ impl ApiClient for ProviderRuntimeClient {
 
             push_prompt_cache_record(&self.client, &mut events);
 
-            if !saw_stop
-                && events.iter().any(|event| {
-                    matches!(event, AssistantEvent::TextDelta(text) if !text.is_empty())
-                        || matches!(event, AssistantEvent::ToolUse { .. })
-                })
-            {
+            if should_append_message_stop(&events, saw_stop) {
                 events.push(AssistantEvent::MessageStop);
             }
 
-            if events
-                .iter()
-                .any(|event| matches!(event, AssistantEvent::MessageStop))
-            {
+            if has_message_stop(&events) {
                 return Ok(events);
             }
 
@@ -1931,6 +1923,20 @@ impl ApiClient for ProviderRuntimeClient {
             Ok(events)
         })
     }
+}
+
+fn should_append_message_stop(events: &[AssistantEvent], saw_stop: bool) -> bool {
+    !saw_stop
+        && events.iter().any(|event| {
+            matches!(event, AssistantEvent::TextDelta(text) if !text.is_empty())
+                || matches!(event, AssistantEvent::ToolUse { .. })
+        })
+}
+
+fn has_message_stop(events: &[AssistantEvent]) -> bool {
+    events
+        .iter()
+        .any(|event| matches!(event, AssistantEvent::MessageStop))
 }
 
 struct SubagentToolExecutor {
